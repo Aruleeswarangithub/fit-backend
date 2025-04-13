@@ -13,7 +13,7 @@ def fetch_google_fit_data(access_token, data_type_name, start_time, end_time):
 
     body = {
         "aggregateBy": [{"dataTypeName": data_type_name}],
-        "bucketByTime": {"durationMillis": 86400000},  # 1 day
+        "bucketByTime": {"durationMillis": 86400000},  # 1 day (24 hours)
         "startTimeMillis": start_time,
         "endTimeMillis": end_time
     }
@@ -30,6 +30,7 @@ def get_steps():
     )
 
     total_steps = 0
+    # Aggregate all step counts
     for bucket in fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
@@ -48,16 +49,24 @@ def get_heart_rate():
 
     total = 0
     count = 0
+    latest_heart_rate = None
+
     for bucket in fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
                 for value in point['value']:
                     bpm = value.get("fpVal", 0)
-                    if 30 <= bpm <= 200:
+                    if 30 <= bpm <= 200:  # Valid heart rate range
                         total += bpm
                         count += 1
+                        latest_heart_rate = bpm  # Track the latest HR
 
-    avg_heart_rate = round(total / count) if count else 77  # fallback default 77 bpm
+    # Return the average heart rate or fallback to the latest valid reading
+    if latest_heart_rate:
+        avg_heart_rate = round(total / count) if count else latest_heart_rate
+    else:
+        avg_heart_rate = 62  # Default if no valid heart rate is found
+
     return jsonify({"average_heart_rate": avg_heart_rate})
 
 
@@ -69,6 +78,7 @@ def get_calories():
     )
 
     total_calories = 0.0
+    # Aggregate all calorie values (active and resting)
     for bucket in fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
