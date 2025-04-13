@@ -73,19 +73,42 @@ def get_heart_rate():
 @app.route("/calories", methods=["POST"])
 def get_calories():
     data = request.json
-    fit_data = fetch_google_fit_data(
+
+    # Fetch active calories
+    active_fit_data = fetch_google_fit_data(
         data["access_token"], "com.google.calories.expended", data["start_time"], data["end_time"]
     )
 
-    total_calories = 0.0
-    # Aggregate all calorie values (active and resting)
-    for bucket in fit_data.get('bucket', []):
+    # Fetch resting calories
+    resting_fit_data = fetch_google_fit_data(
+        data["access_token"], "com.google.calories.bmr", data["start_time"], data["end_time"]
+    )
+
+    active_calories = 0.0
+    resting_calories = 0.0
+
+    # Aggregate active calories (using 'com.google.calories.expended')
+    for bucket in active_fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
                 for value in point['value']:
-                    total_calories += value.get("fpVal", 0.0)
+                    active_calories += value.get("fpVal", 0.0)
 
-    return jsonify({"total_calories": round(total_calories)})
+    # Aggregate resting calories (using 'com.google.calories.bmr')
+    for bucket in resting_fit_data.get('bucket', []):
+        for dataset in bucket['dataset']:
+            for point in dataset['point']:
+                for value in point['value']:
+                    resting_calories += value.get("fpVal", 0.0)
+
+    # Total calories as sum of active and resting calories
+    total_calories = active_calories + resting_calories
+
+    return jsonify({
+        "active_calories": round(active_calories),
+        "resting_calories": round(resting_calories),
+        "total_calories": round(total_calories)
+    })
 
 
 if __name__ == "__main__":
