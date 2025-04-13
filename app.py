@@ -30,7 +30,6 @@ def get_steps():
     )
 
     total_steps = 0
-    # Aggregate all step counts
     for bucket in fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
@@ -51,6 +50,7 @@ def get_heart_rate():
     count = 0
     latest_heart_rate = None
 
+    # Iterate over data to get heart rate readings
     for bucket in fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
@@ -61,11 +61,13 @@ def get_heart_rate():
                         count += 1
                         latest_heart_rate = bpm  # Track the latest HR
 
-    # Return the average heart rate or fallback to the latest valid reading
-    if latest_heart_rate:
-        avg_heart_rate = round(total / count) if count else latest_heart_rate
+    # If no valid HR data, fallback to the latest HR reading
+    if count > 0:
+        avg_heart_rate = round(total / count)
+    elif latest_heart_rate is not None:
+        avg_heart_rate = latest_heart_rate  # Use the latest heart rate value
     else:
-        avg_heart_rate = 62  # Default if no valid heart rate is found
+        avg_heart_rate = 62  # Default fallback HR if no data found
 
     return jsonify({"average_heart_rate": avg_heart_rate})
 
@@ -87,14 +89,14 @@ def get_calories():
     active_calories = 0.0
     resting_calories = 0.0
 
-    # Aggregate active calories (using 'com.google.calories.expended')
+    # Aggregate active calories
     for bucket in active_fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
                 for value in point['value']:
                     active_calories += value.get("fpVal", 0.0)
 
-    # Aggregate resting calories (using 'com.google.calories.bmr')
+    # Aggregate resting calories
     for bucket in resting_fit_data.get('bucket', []):
         for dataset in bucket['dataset']:
             for point in dataset['point']:
@@ -104,6 +106,7 @@ def get_calories():
     # Total calories as sum of active and resting calories
     total_calories = active_calories + resting_calories
 
+    # Ensure calories are being returned correctly
     return jsonify({
         "active_calories": round(active_calories),
         "resting_calories": round(resting_calories),
